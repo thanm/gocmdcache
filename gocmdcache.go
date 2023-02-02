@@ -139,7 +139,7 @@ func (c *Cache) tryCache(dir string, tag string) ([]byte, bool, error) {
 	return contents, true, nil
 }
 
-func (c *Cache) writeCache(dir, tag string, content []byte) error {
+func (c *Cache) WriteCache(dir, tag string, content []byte) error {
 	c.verb(2, "%s cache write for %s", tag, dir)
 	if err := os.WriteFile(c.cachePath(dir, tag), content, 0777); err != nil {
 		return err
@@ -170,7 +170,7 @@ func (c *Cache) GoList(dir string) (*Pkg, error) {
 		c.listcache[dir] = pk
 		c.listcachemu.Unlock()
 		// write back to cache
-		if err := c.writeCache(dir, "list", out); err != nil {
+		if err := c.WriteCache(dir, "list", out); err != nil {
 			return nil, fmt.Errorf("writing cache: %v", err)
 		}
 		return pk, nil
@@ -267,7 +267,7 @@ func (c *Cache) PkgSize(dir string) (PkgInfo, error) {
 		}
 		out = []byte(payload)
 		// write back size to cache
-		if err := c.writeCache(dir, "build", out); err != nil {
+		if err := c.WriteCache(dir, "build", out); err != nil {
 			return PkgInfo{}, fmt.Errorf("writing cache: %v", err)
 		}
 		os.Remove(outfile)
