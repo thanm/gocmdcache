@@ -18,7 +18,7 @@ import (
 // (such as "go list" or "go build") and then caching the results, so
 // that repeated identical queries will return more quickly.
 
-type GoCmdCache struct {
+type Cache struct {
 	listcachemu    sync.Mutex
 	listcache      map[string]*Pkg
 	pkgsizecachemu sync.Mutex
@@ -29,7 +29,7 @@ type GoCmdCache struct {
 	vlevel         int
 }
 
-func (c *GoCmdCache) verb(vlevel int, s string, a ...interface{}) {
+func (c *Cache) verb(vlevel int, s string, a ...interface{}) {
 	if c.vlevel >= vlevel {
 		fmt.Printf(s, a...)
 		fmt.Printf("\n")
@@ -38,14 +38,14 @@ func (c *GoCmdCache) verb(vlevel int, s string, a ...interface{}) {
 
 const glopath = "=glo="
 
-func Make(repohash, goroothash, rootcachedir string, verblevel int) (*GoCmdCache, error) {
+func Make(repohash, goroothash, rootcachedir string, verblevel int) (*Cache, error) {
 	if err := os.Mkdir(rootcachedir, 0777); err != nil {
 		if !os.IsExist(err) {
 			return nil, fmt.Errorf("unable to create cache %s: %v",
 				rootcachedir, err)
 		}
 	}
-	rv := &GoCmdCache{
+	rv := &Cache{
 		listcache:    make(map[string]*Pkg),
 		pkgsizecache: make(map[string]PkgInfo),
 		root:         rootcachedir,
@@ -76,7 +76,7 @@ type PkgInfo struct {
 }
 
 // Cache of package sizes from gobuild with associated mutex
-func (c *GoCmdCache) writeToken() error {
+func (c *Cache) writeToken() error {
 	p := filepath.Join(c.root, glopath)
 	outf, err := os.OpenFile(p, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
@@ -91,7 +91,7 @@ func (c *GoCmdCache) writeToken() error {
 	return nil
 }
 
-func (c *GoCmdCache) checkValid() error {
+func (c *Cache) checkValid() error {
 	p := filepath.Join(c.root, glopath)
 	contents, err := os.ReadFile(p)
 	if err != nil {
@@ -116,12 +116,12 @@ func (c *GoCmdCache) checkValid() error {
 	return nil
 }
 
-func (c *GoCmdCache) cachePath(dir string, tag string) string {
+func (c *Cache) cachePath(dir string, tag string) string {
 	dtag := strings.ReplaceAll(dir, "/", "%")
 	return filepath.Join(c.root, dtag+"."+tag)
 }
 
-func (c *GoCmdCache) tryCache(dir string, tag string) ([]byte, bool, error) {
+func (c *Cache) tryCache(dir string, tag string) ([]byte, bool, error) {
 	if err := c.checkValid(); err != nil {
 		return nil, false, fmt.Errorf("problems reading cache %s: %v",
 			c.root, err)
@@ -139,7 +139,7 @@ func (c *GoCmdCache) tryCache(dir string, tag string) ([]byte, bool, error) {
 	return contents, true, nil
 }
 
-func (c *GoCmdCache) writeCache(dir, tag string, content []byte) error {
+func (c *Cache) writeCache(dir, tag string, content []byte) error {
 	c.verb(2, "%s cache write for %s", tag, dir)
 	if err := os.WriteFile(c.cachePath(dir, tag), content, 0777); err != nil {
 		return err
@@ -147,7 +147,7 @@ func (c *GoCmdCache) writeCache(dir, tag string, content []byte) error {
 	return nil
 }
 
-func (c *GoCmdCache) GoList(dir string) (*Pkg, error) {
+func (c *Cache) GoList(dir string) (*Pkg, error) {
 	// Try mem cache first
 	c.listcachemu.Lock()
 	cpk, ok := c.listcache[dir]
@@ -234,7 +234,7 @@ func computePkgInfo(apath string) (string, error) {
 	return fmt.Sprintf("%d %d\n", fi.Size(), totf), nil
 }
 
-func (c *GoCmdCache) PkgSize(dir string) (PkgInfo, error) {
+func (c *Cache) PkgSize(dir string) (PkgInfo, error) {
 	// special case for unsafe
 	if dir == "unsafe" {
 		return PkgInfo{Size: 1, NumFuncs: 0}, nil
