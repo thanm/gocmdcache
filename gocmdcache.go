@@ -258,6 +258,7 @@ func (c *Cache) PkgSize(dir string) (PkgInfo, error) {
 		cmd := exec.Command("go", "build", "-o", outfile, dir)
 		out, err = cmd.CombinedOutput()
 		if err != nil {
+			c.verb(0, "failed build output: %s", string(out))
 			return PkgInfo{}, fmt.Errorf("go build %s: %v", dir, err)
 		}
 		payload, perr := computePkgInfo(outfile)
